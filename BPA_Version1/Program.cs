@@ -21,7 +21,8 @@ namespace BPA_Version1
         public static IMongoDatabase  database = client.GetDatabase("BPA");
         public static IMongoCollection<BsonDocument> Qcollection = database.GetCollection<BsonDocument>("Question");
         public static MqttClient mqttclient = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String channel = new string("BPA");
+        public static string channel = "BPA";
+        public static Program p = new Program();
 
         static void Main(string[] args)
         {
@@ -34,7 +35,7 @@ namespace BPA_Version1
                 new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
                       
 
-            Program p = new Program();
+           
             //zum Testen 
             p.DeleteCollection("Question");
         
@@ -45,14 +46,18 @@ namespace BPA_Version1
                 p.SaveQuestion(f.FullName.ToString());
             }
 
+            
 
-           
-                                 
+
+
+
+
         }
 
         public void MQTTPublish(string msg)
         {
             mqttclient.Publish(channel, Encoding.UTF8.GetBytes(msg));
+
         }
 
 
@@ -62,6 +67,11 @@ namespace BPA_Version1
             string msg = Encoding.UTF8.GetString(e.Message, 0, e.Message.Length);
 
             Console.WriteLine("message = " + msg);
+            if (msg == "Fragen")
+            {
+               p.MQTTPublish(p.SelectQuestion("true", "2"));
+
+            }
         }
 
         public void DeleteOneQuestion( string attribute, int value)
@@ -89,7 +99,7 @@ namespace BPA_Version1
             client.DropDatabase(name); 
         }
 
-        public void SaveQuestion ( string file)
+        public void SaveQuestion (string file)
         {
             
             string text = System.IO.File.ReadAllText(@file);
@@ -107,30 +117,20 @@ namespace BPA_Version1
         }
 
 
-        public void SelectQuestion (string att, string numb)
+        public string SelectQuestion (string att, string numb)
         {
             var filter = Builders<BsonDocument>.Filter.Eq(att, numb);
             var result = Qcollection.Find(filter).ToList();
             foreach (var doc in result)
             {
                 Console.WriteLine(doc.ToJson());
+
             }
+            return result.ToString(); 
         }
 
 
-        public void oldCode()
-        {
-            
-            //mehrere Strings einlesen Test
-            //
-                                 
-
-            //Test: Document finden bei dem richtige Frage = 2 ist
-            //var results = collection.CountDocuments(new BsonDocument("true", 2));
-            //Console.WriteLine("{0} ist die Anzahl", results);
-
-
-        }
+       
       
     }
     

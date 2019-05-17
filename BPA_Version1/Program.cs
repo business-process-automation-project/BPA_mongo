@@ -65,13 +65,7 @@ namespace BPA_Version1
 
         public void oldCode()
         {
-            //Json einlesen 
-            string text = System.IO.File.ReadAllText(@"C:\Users\D064979\Desktop\json\json.json");
-            var document = BsonSerializer.Deserialize<BsonDocument>(text);
-            var database = client.GetDatabase("Test");
-            var collection = database.GetCollection<BsonDocument>("Fragen");
-            collection.InsertOne(document);
-
+            
             //mehrere Strings einlesen Test
             string myjson = System.IO.File.ReadAllText(@"C:\Users\D064979\Desktop\json\json2.json");
             var doc = new BsonDocument {
@@ -84,9 +78,6 @@ namespace BPA_Version1
             var results = collection.CountDocuments(new BsonDocument("true", 2));
             Console.WriteLine("{0} ist die Anzahl", results);
 
-
-            ShowDB();
-            DeleteDB("BPA");
 
         }
       

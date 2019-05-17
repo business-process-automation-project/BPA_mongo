@@ -21,6 +21,7 @@ namespace BPA_Version1
         public static IMongoDatabase  database = client.GetDatabase("BPA");
         public static IMongoCollection<BsonDocument> Qcollection = database.GetCollection<BsonDocument>("Question");
         public static MqttClient mqttclient = new MqttClient(IPAddress.Parse("141.56.180.120"));
+        public static String channel = new string("BPA");
 
         static void Main(string[] args)
         {
@@ -29,7 +30,7 @@ namespace BPA_Version1
             var clientId = Guid.NewGuid().ToString();
             mqttclient.Connect(clientId);
             mqttclient.Subscribe(
-                new string[] { "BaltazarBerg"},
+                new string[] {channel},
                 new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
                       
 
@@ -51,7 +52,7 @@ namespace BPA_Version1
 
         public void MQTTPublish(string msg)
         {
-            mqttclient.Publish("BaltazarBerg", Encoding.UTF8.GetBytes(msg));
+            mqttclient.Publish(channel, Encoding.UTF8.GetBytes(msg));
         }
 
 

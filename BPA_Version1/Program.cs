@@ -20,28 +20,40 @@ namespace BPA_Version1
         public static MongoClient client = new MongoClient("mongodb://localhost:27017");
         public static IMongoDatabase  database = client.GetDatabase("BPA");
         public static IMongoCollection<BsonDocument> Qcollection = database.GetCollection<BsonDocument>("Question");
+        public static MqttClient mqttclient = new MqttClient(IPAddress.Parse("141.56.180.120"));
 
         static void Main(string[] args)
         {
-            MqttClient client = new MqttClient(IPAddress.Parse("18.184.104.180"));
-            client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
+
+            mqttclient.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
             var clientId = Guid.NewGuid().ToString();
-            client.Connect(clientId);
-            client.Subscribe(
+            mqttclient.Connect(clientId);
+            mqttclient.Subscribe(
                 new string[] { "BaltazarBerg"},
                 new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
-           
-
-            client.Publish("BaltazarBerg", Encoding.UTF8.GetBytes("Oh Baltazar!"));
+                      
 
             Program p = new Program();
-            string path = "C:\\Users\\D064979\\Desktop\\json\\json1.json"; 
-            p.SaveQuestion(path);
-            p.DeleteOneQuestion("true", 2);
-            p.ShowDB();
-            p.DeleteCollection("Question"); 
-                   
+            //zum Testen 
+            p.DeleteCollection("Question");
+        
+            //Initiales Laden der Fragen aus dem Ordner
+            System.IO.DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(@"C:\json");
+            foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
+            {
+                p.SaveQuestion(f.FullName.ToString());
+            }
+
+
+           
+                                 
         }
+
+        public void MQTTPublish(string msg)
+        {
+            mqttclient.Publish("BaltazarBerg", Encoding.UTF8.GetBytes(msg));
+        }
+
 
         static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
@@ -83,17 +95,33 @@ namespace BPA_Version1
             var document = BsonSerializer.Deserialize<BsonDocument>(text);
             Qcollection.InsertOne(document);
         }
+        
+        public void SaveMultipleQuestions(string name)
+        {
+            string myjson = System.IO.File.ReadAllText(@name);
+            var doc = new BsonDocument {
+            { "values", BsonSerializer.Deserialize<BsonArray>(myjson) }
+            };
+            Qcollection.InsertOne(doc);
+        }
+
+
+        public void SelectQuestion (string att, string numb)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq(att, numb);
+            var result = Qcollection.Find(filter).ToList();
+            foreach (var doc in result)
+            {
+                Console.WriteLine(doc.ToJson());
+            }
+        }
 
 
         public void oldCode()
         {
             
             //mehrere Strings einlesen Test
-            string myjson = System.IO.File.ReadAllText(@"C:\Users\D064979\Desktop\json\json2.json");
-            var doc = new BsonDocument {
-                    { "values", BsonSerializer.Deserialize<BsonArray>(myjson) }
-                };
-            //collection.InsertOne(doc);
+            //
                                  
 
             //Test: Document finden bei dem richtige Frage = 2 ist

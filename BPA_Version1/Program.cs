@@ -15,6 +15,14 @@ using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace BPA_Version1
 {
+    
+    public class question
+    {
+        public string Question { get; set; }
+        public string[] Answers { get; set; }
+        public bool[] Correctness { get; set; }
+    }
+
     class Program
     {
         //MongoDB Globale Settings
@@ -79,15 +87,15 @@ namespace BPA_Version1
                 case "Luisa":
                     if (msg == "Fragen")
                     {
-                        p.MQTTPublish("Luisa",p.SelectQuestion("true", "2"));
+                        p.MQTTPublish("Luisa",p.SelectQuestion("Question", "Was ist meine Lieblingsfarbe?"));
                     }
                     break;
                 case "Lennert":
                     if (msg == "Fragen")
                     {
                         Qcollection.Find(new BsonDocument()).ForEachAsync(X => Console.WriteLine(X));                    
-                    
-                        var filter = Builders<BsonDocument>.Filter.Eq("Fragen", "Was ist 1+1");
+                        
+                        var filter = Builders<BsonDocument>.Filter.Empty;//Gt( .Eq("Fragen", "Was ist 1+1");
                         var result = Qcollection.Find(filter).ToList();
                         foreach (var doc in result)
                         {
@@ -187,11 +195,13 @@ namespace BPA_Version1
         {
             var filter = Builders<BsonDocument>.Filter.Eq(att, numb);
             var result = Qcollection.Find(filter).ToList();
+            var x = "";
             foreach (var doc in result)
             {
                 Console.WriteLine(doc.ToJson());
+                x = doc.ToJson();
             }
-            return result.ToString(); 
+            return x; 
         }      
     }    
 }

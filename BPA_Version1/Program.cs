@@ -17,21 +17,25 @@ namespace BPA_Version1
 {
     class Program
     {
-       
         public static MongoClient client = new MongoClient("mongodb://localhost:27017");
         public static IMongoDatabase  database = client.GetDatabase("BPA");
         public static IMongoCollection<BsonDocument> Qcollection = database.GetCollection<BsonDocument>("Question");
+        public static MqttClient mqttclient = new MqttClient(IPAddress.Parse("141.56.180.120"));
+        public static String channel = new string("BPA");
 
-        //MQTT Settings mit Brocker und Topics
-        public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String[] topics = {"BPA", "TEST","REGISTER"};
-        
         static void Main(string[] args)
         {
+
+            mqttclient.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
+            var clientId = Guid.NewGuid().ToString();
+            mqttclient.Connect(clientId);
+            mqttclient.Subscribe(
+                new string[] {channel},
+                new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
+                      
+
             Program p = new Program();
-            p.setMQTT();
-            
-            //zum Testen
+            //zum Testen 
             p.DeleteCollection("Question");
         
             //Initiales Laden der Fragen aus dem Ordner
@@ -39,42 +43,25 @@ namespace BPA_Version1
             foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
             {
                 p.SaveQuestion(f.FullName.ToString());
-            }                        
-        }
-
-        public void setMQTT(){
-            mqtt.MqttMsgPublishReceived += MQTTHandler;
-            mqtt.Connect("Spielmanager");
-            byte[] qos = new byte[topics.Length];
-
-            for(int i=0; i < topics.Length;i++)
-            {
-               qos[i] = MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE;
             }
 
-            mqtt.Subscribe(topics, qos);
+
+           
+                                 
         }
 
-        public void MQTTPublish(string channel, string msg)
+        public void MQTTPublish(string msg)
         {
-            mqtt.Publish(channel, Encoding.UTF8.GetBytes(msg));
+            mqttclient.Publish(channel, Encoding.UTF8.GetBytes(msg));
         }
 
-        static void MQTTHandler(object sender, MqttMsgPublishEventArgs e)
+
+        static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
+            // handle message received, get message as bitarray e -> msg string
             string msg = Encoding.UTF8.GetString(e.Message, 0, e.Message.Length);
-            switch (e.Topic)
-            {
-                case "BPA":
-                    Console.WriteLine("I'm a message from topic BPA\t{0}",msg);
-                    break;
-                case "TEST":
-                    Console.WriteLine("I'm a message from topic TEST\t{0}",msg);
-                    break;
-                default:
-                    Console.WriteLine("Topic {0} is not defined. \tMessage = {1}",e.Topic, msg);
-                    break;
-            }
+
+            Console.WriteLine("message = " + msg);
         }
 
         public void DeleteOneQuestion( string attribute, int value)
@@ -104,6 +91,7 @@ namespace BPA_Version1
 
         public void SaveQuestion ( string file)
         {
+            
             string text = System.IO.File.ReadAllText(@file);
             var document = BsonSerializer.Deserialize<BsonDocument>(text);
             Qcollection.InsertOne(document);
@@ -117,7 +105,8 @@ namespace BPA_Version1
             };
             Qcollection.InsertOne(doc);
         }
-        
+
+
         public void SelectQuestion (string att, string numb)
         {
             var filter = Builders<BsonDocument>.Filter.Eq(att, numb);
@@ -126,7 +115,23 @@ namespace BPA_Version1
             {
                 Console.WriteLine(doc.ToJson());
             }
-        }   
-    }
-}
+        }
 
+
+        public void oldCode()
+        {
+            
+            //mehrere Strings einlesen Test
+            //
+                                 
+
+            //Test: Document finden bei dem richtige Frage = 2 ist
+            //var results = collection.CountDocuments(new BsonDocument("true", 2));
+            //Console.WriteLine("{0} ist die Anzahl", results);
+
+
+        }
+      
+    }
+    
+}

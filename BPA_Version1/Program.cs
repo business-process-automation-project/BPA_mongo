@@ -25,7 +25,7 @@ namespace BPA_Version1
         
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String[] topics = {"BPA", "TEST","REGISTER"};
+        public static String[] topics = {"BPA", "Lennert","REGISTER","Luisa"};
 
         public static Program p = new Program();
         
@@ -82,6 +82,22 @@ namespace BPA_Version1
                         p.MQTTPublish("Luisa",p.SelectQuestion("true", "2"));
                     }
                     break;
+                case "Lennert":
+                    if (msg == "Fragen")
+                    {
+                        Qcollection.Find(new BsonDocument()).ForEachAsync(X => Console.WriteLine(X));                    
+                    
+                        var filter = Builders<BsonDocument>.Filter.Eq("Fragen", "Was ist 1+1");
+                        var result = Qcollection.Find(filter).ToList();
+                        foreach (var doc in result)
+                        {
+                            var j = doc.ToJson();
+                            Console.WriteLine(j);
+                            p.MQTTPublish("Lennert",j);
+                        }
+                    }
+
+                    break;
                 default:
                     Console.WriteLine("Topic {0} is not defined. \tMessage = {1}",e.Topic, msg);
                     break;
@@ -101,7 +117,7 @@ namespace BPA_Version1
                 }
                 
                 long count = Qcollection.Count(new BsonDocument());
-
+                
                 if(count>0)
                 {
                     Console.WriteLine("Added {0} questions to the database.",count);

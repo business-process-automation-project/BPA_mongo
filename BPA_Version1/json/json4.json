@@ -1,0 +1,14 @@
+{
+        "Question": "Wie heiﬂe ich mit Vornamen?",
+        "Answers": [
+            "Norbert",
+            "Horst",
+            "Florian"
+        ],
+        "Correctness":
+        [
+            false,
+            false,
+            true
+        ]
+    }

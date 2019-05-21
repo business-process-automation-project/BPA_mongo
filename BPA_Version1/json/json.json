@@ -1,0 +1,15 @@
+{
+        "Question": "Was ist meine Lieblingsfarbe?",
+        "Answers":
+        [
+            "Rot",
+            "Blau",
+            "Grün"
+        ],
+        "Correctness":
+        [
+            false,
+            true,
+            false
+        ]
+    }

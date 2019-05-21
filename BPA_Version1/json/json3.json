@@ -1,0 +1,14 @@
+{
+        "Question": "Wie oft schluckt ein erwachsener Mensch am Tag?",
+        "Answers": [
+            "sechshundertmal",
+            "fünfzigmal",
+            "achthundertmal"
+        ],
+        "Correctness":
+        [
+            true,
+            false,
+            false
+        ]
+    }

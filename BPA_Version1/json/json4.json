@@ -1,14 +1,17 @@
 {
-        "Question": "Wie heiﬂe ich mit Vornamen?",
-        "Answers": [
-            "Norbert",
-            "Horst",
-            "Florian"
-        ],
-        "Correctness":
-        [
-            false,
-            false,
-            true
-        ]
+  "Question": "Wie heiﬂe ich mit Vornamen?",
+  "Answers": [
+    {
+      "Text": "Norbert",
+      "Correctness": false
+    },
+    {
+      "Text": "Ash",
+      "Correctness": false
+    },
+    {
+      "Text": "Florian",
+      "Correctness": true
     }
+  ]
+}

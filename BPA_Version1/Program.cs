@@ -25,7 +25,7 @@ namespace BPA_Version1
         
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String[] topics = {"BPA", "Lennert","REGISTER","Luisa"};
+        public static String[] topics = {"BPA", "Lennert","REGISTER","Luisa","RequestQuestions"};
 
         public static Program p = new Program();
         
@@ -33,6 +33,7 @@ namespace BPA_Version1
         {
             p.SetMQTT(); //MQTT Connection aufbauen
             p.MongoInit(); //MongoDB mit Fragen initialisieren
+            
         }
 
         //MQTT Client verbinden und Topics subscriben
@@ -96,7 +97,16 @@ namespace BPA_Version1
                             p.MQTTPublish("Lennert",j);
                         }
                     }
+                    break;
+                    case "RequestQuestions":
+                    {
 
+                        Console.WriteLine("Florian möchte {0} Fragen haben.",msg);
+                        string result = p.SelectNRandomQuestions(Convert.ToInt32(msg));
+                        Console.WriteLine(result);
+                        p.MQTTPublish("ResponseQuestions",result);
+                        break;
+                    }
                     break;
                 default:
                     Console.WriteLine("Topic {0} is not defined. \tMessage = {1}",e.Topic, msg);
@@ -195,5 +205,55 @@ namespace BPA_Version1
             }
             return x; 
         }      
+
+        
+        public string SelectNRandomQuestions (int n)
+        {
+            //Hole alle Fragen aus der Datenbank
+            var filter = Builders<BsonDocument>.Filter.Empty;
+            var result = Qcollection.Find(filter).ToList();
+                        
+            //Wie viele Fragen gibt es in der Datenbank
+            int count = Convert.ToInt32(Qcollection.Count(new BsonDocument()));
+            
+            //Erzeugung von n Zufallszahlen, die sich nicht doppeln
+            Random rnd = new Random();
+            int[] randomQuestions = new int[n];     
+            int dummy;
+
+            randomQuestions[0] = rnd.Next(count);
+            for(int x = 1; x < n;)
+            {
+                dummy = rnd.Next(count);
+                if (!randomQuestions.Contains(dummy))
+                {
+                    randomQuestions[x] = dummy;
+                    x++;
+                }
+            }   
+            //Zufallszahlen sortieren
+            Array.Sort(randomQuestions);
+            
+            //String zusammenbauen
+            string resultString = "[";
+            int counter = 0;
+
+            //Alle Dokumente durchlaufen und wenn das x-te Dokument in den Zufallszahlen enthalten ist wird es zum String hinzugefügt
+            foreach (var doc in result)
+            {
+                if (randomQuestions.Contains(counter))
+                {
+                    resultString += doc.ToJson() + ",";
+                    Console.WriteLine(doc.ToJson());    
+                }
+                counter++;
+            }
+            //Löschen des letztens Kommas aus der foreach-Schleife
+            resultString = resultString.Substring(0,resultString.Length-1);
+            resultString += "]";
+
+            return resultString; 
+        }
+        
     }    
 }

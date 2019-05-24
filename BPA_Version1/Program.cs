@@ -15,14 +15,6 @@ using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace BPA_Version1
 {
-    
-    public class question
-    {
-        public string Question { get; set; }
-        public string[] Answers { get; set; }
-        public bool[] Correctness { get; set; }
-    }
-
     class Program
     {
         //MongoDB Globale Settings

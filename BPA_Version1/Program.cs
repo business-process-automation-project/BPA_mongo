@@ -25,7 +25,7 @@ namespace BPA_Version1
         
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String[] topics = {"BPA", "Lennert","REGISTER","Luisa","RequestQuestions"};
+        public static String[] topics = {"GetPlayer","GetScoreboard","RequestQuestions"};
 
         public static Program p = new Program();
         
@@ -71,18 +71,6 @@ namespace BPA_Version1
             string msg = Encoding.UTF8.GetString(e.Message, 0, e.Message.Length);
             switch (e.Topic)
             {
-                case "BPA":
-                    Console.WriteLine("I'm a message from topic BPA\t{0}",msg);
-                    break;
-                case "TEST":
-                    Console.WriteLine("I'm a message from topic TEST\t{0}",msg);
-                    break;
-                case "Luisa":
-                    if (msg == "Fragen")
-                    {
-                        p.MQTTPublish("Luisa",p.SelectQuestion("Question", "Was ist meine Lieblingsfarbe?"));
-                    }
-                    break;
                 case "Lennert":
                     if (msg == "Fragen")
                     {
@@ -100,11 +88,22 @@ namespace BPA_Version1
                     break;
                     case "RequestQuestions":
                     {
-
                         Console.WriteLine("Florian möchte {0} Fragen haben.",msg);
                         string result = p.SelectNRandomQuestions(Convert.ToInt32(msg));
                         Console.WriteLine(result);
                         p.MQTTPublish("ResponseQuestions",result);
+                        break;
+                    }
+                    break;
+                    case "GetPlayer":
+                    {
+                        p.SaveDocument(Pcollection, msg);
+                        break;
+                    }
+                    break;
+                    case "GetScoreboard":
+                    {
+                        p.SendScoreboard();
                         break;
                     }
                     break;
@@ -123,7 +122,7 @@ namespace BPA_Version1
                 System.IO.DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(@"C:\json");
                 foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
                 {
-                    p.SaveQuestion(f.FullName.ToString());
+                    p.SaveDocumentFromFile(Qcollection,f.FullName.ToString());
                 }
                 
                 long count = Qcollection.Count(new BsonDocument());
@@ -131,12 +130,29 @@ namespace BPA_Version1
                 if(count>0)
                 {
                     Console.WriteLine("Added {0} questions to the database.",count);
-                    return true;
                 } else
                 {
-                    Console.WriteLine("No questions added to the database.",count);
-                    return false;
+                    Console.WriteLine("No questions added to the database.",count); 
                 }
+
+                p.DeleteCollection("Player");
+                ParentDirectory = new System.IO.DirectoryInfo(@"C:\player");
+                foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
+                {
+                    p.SaveDocumentFromFile(Pcollection,f.FullName.ToString());
+                }
+                
+                count = Pcollection.Count(new BsonDocument());
+                
+                if(count>0)
+                {
+                    Console.WriteLine("Added {0} player to the database.",count);
+                } else
+                {
+                    Console.WriteLine("No player added to the database.",count);
+                }
+                return true;
+
             }
             catch (Exception e)
             {
@@ -174,14 +190,21 @@ namespace BPA_Version1
             Console.ReadKey();
         }
 
-        //MongoDB Speichern einer Frage
-        public void SaveQuestion (string file)
+        //MongoDB Speichern eines Dokuments von einer Datei
+        public void SaveDocumentFromFile (IMongoCollection<BsonDocument> col, string file)
         {
             string text = System.IO.File.ReadAllText(@file);
             var document = BsonSerializer.Deserialize<BsonDocument>(text);
-            Qcollection.InsertOne(document);
+            col.InsertOne(document);
         }
-        
+
+        //MongoDB Speichern eines Dokuments per MQTT
+        public void SaveDocument (IMongoCollection<BsonDocument> col, string msg)
+        {
+            var document = BsonSerializer.Deserialize<BsonDocument>(msg);
+            col.InsertOne(document);
+        }
+
         //MongoDB Speichern mehrerer Fragen
         public void SaveMultipleQuestions(string name)
         {
@@ -253,6 +276,30 @@ namespace BPA_Version1
             resultString += "]";
 
             return resultString; 
+        }
+        
+        public void SendScoreboard()
+        {
+            //Hole alle Spieler sortiert nach Punktzahl aus der Datenbank
+            var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
+
+            string resultString = "[";
+
+            foreach (var doc in list)
+            {
+                //Doc 0 = mongoID 1 = batchId 2=name 3=age 4=score
+                                
+                resultString += "{";
+                resultString += "\"batchId\":\"" + doc[1] + "\",";
+                resultString += "\"name\":\"" + doc[2] + "\",";
+                resultString += "\"age\":" + doc[3] + ",";
+                resultString += "\"score\":" + doc[4] + "},";
+            }
+
+            //Löschen des letztens Kommas aus der foreach-Schleife
+            resultString = resultString.Substring(0,resultString.Length-1);
+            resultString += "]";
+            p.MQTTPublish("GetScore",resultString);
         }
         
     }    

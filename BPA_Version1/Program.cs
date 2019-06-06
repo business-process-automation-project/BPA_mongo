@@ -25,7 +25,7 @@ namespace BPA_Version1
         
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static String[] topics = {"GetPlayer","GetScoreboard","RequestQuestions"};
+        public static String[] topics = {"GetPlayer","GetScoreboard","RequestQuestions","GetWinner"};
 
         public static Program p = new Program();
         
@@ -107,6 +107,11 @@ namespace BPA_Version1
                         break;
                     }
                     break;
+                    case "GetWinner":
+                    {
+                        p.AddPoints(msg);
+                        break;
+                    }
                 default:
                     Console.WriteLine("Topic {0} is not defined. \tMessage = {1}",e.Topic, msg);
                     break;
@@ -300,6 +305,18 @@ namespace BPA_Version1
             resultString = resultString.Substring(0,resultString.Length-1);
             resultString += "]";
             p.MQTTPublish("GetScore",resultString);
+        }
+
+        public void AddPoints(string msg)
+        {
+            var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
+            foreach(var doc in list){
+                if(msg.Contains(doc[1].AsString))
+                {
+                    doc[4] = doc[4].AsInt32 + 1;
+                }
+            }
+
         }
         
     }    

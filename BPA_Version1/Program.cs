@@ -294,7 +294,7 @@ namespace BPA_Version1
             var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
 
             string resultString = "[";
-
+            try { 
             foreach (var doc in list)
             {
                 //Doc 0 = mongoID 1 = badgeId 2=name 3=age 4=score
@@ -312,6 +312,8 @@ namespace BPA_Version1
 
             //für die Übergabe der Rangliste 
             p.MQTTPublish("SetScoreboard", resultString);
+            }
+            catch (Exception e ) { }
         }
 
         public void AddPoints(string msg)

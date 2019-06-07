@@ -24,7 +24,8 @@ namespace BPA_Version1
         public static IMongoCollection<BsonDocument> Pcollection = database.GetCollection<BsonDocument>("Player");
         
         //MQTT Globale Settings mit Brocker und Topics
-        public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
+        //public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
+        public static MqttClient mqtt = new MqttClient("broker.hivemq.com");
         public static String[] topics = {"GetPlayer","GetScoreboard","RequestQuestions","GetWinner"};
 
         public static Program p = new Program();
@@ -304,7 +305,7 @@ namespace BPA_Version1
             //Löschen des letztens Kommas aus der foreach-Schleife
             resultString = resultString.Substring(0,resultString.Length-1);
             resultString += "]";
-            p.MQTTPublish("GetScore",resultString);
+            p.MQTTPublish("htw/bpa/123",resultString);
         }
 
         public void AddPoints(string msg)

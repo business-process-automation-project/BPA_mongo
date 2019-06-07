@@ -317,15 +317,19 @@ namespace BPA_Version1
         public void AddPoints(string msg)
         {
             string id;
-            int score;
+            int score ;
+
             var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
             foreach (var doc in list)
             {
                 if (msg.Contains(doc[1].AsString))
                 {
                     
-                     id = doc[1].AsString;
-                    score = doc[4].AsInt32 + 1;
+                    id = doc[1].AsString;
+                     
+                    try { score = doc[4].AsInt32 + 1; }
+                    catch (Exception e ) { score = 1; }; 
+                                   
 
                     var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);
                     var update = Builders<BsonDocument>.Update.Set("score", score);

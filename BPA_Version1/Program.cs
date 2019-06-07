@@ -297,10 +297,10 @@ namespace BPA_Version1
 
             foreach (var doc in list)
             {
-                //Doc 0 = mongoID 1 = batchId 2=name 3=age 4=score
+                //Doc 0 = mongoID 1 = badgeId 2=name 3=age 4=score
 
                 resultString += "{";
-                resultString += "\"batchId\":\"" + doc[1] + "\",";
+                resultString += "\"badgeId\":\"" + doc[1] + "\",";
                 resultString += "\"name\":\"" + doc[2] + "\",";
                 resultString += "\"age\":" + doc[3] + ",";
                 resultString += "\"score\":" + doc[4] + "},";
@@ -323,28 +323,21 @@ namespace BPA_Version1
             {
                 if (msg.Contains(doc[1].AsString))
                 {
-                    //Console.WriteLine(doc);
-                    doc[4] = doc[4].AsInt32 + 1;
-                    id = doc[2].AsString;
+                    
+                     id = doc[1].AsString;
                     score = doc[4].AsInt32 + 1;
 
-                    var filter = Builders<BsonDocument>.Filter.Eq("name", id);
-                    //var update = Builders<BsonDocument>.Update.Set("score", score);
-                    //var result = Pcollection.UpdateOne(filter, update);
-                    var result = Qcollection.Find(filter).ToList();
-                    Console.WriteLine("bala");
+                    var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);
+                    var update = Builders<BsonDocument>.Update.Set("score", score);
+                    var result = Pcollection.UpdateOne(filter, update);
+                    
+                    
+             
                 }
             }
 
 
-            var list1 = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
-            foreach (var doc2 in list1)
-            {
-                Console.WriteLine(doc2);
-            }
-
-
-
+            p.SendScoreboard(); 
 
         }
     }

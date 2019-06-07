@@ -19,41 +19,42 @@ namespace BPA_Version1
     {
         //MongoDB Globale Settings
         public static MongoClient client = new MongoClient("mongodb://localhost:27017");
-        public static IMongoDatabase  database = client.GetDatabase("BPA");
+        public static IMongoDatabase database = client.GetDatabase("BPA");
         public static IMongoCollection<BsonDocument> Qcollection = database.GetCollection<BsonDocument>("Question");
         public static IMongoCollection<BsonDocument> Pcollection = database.GetCollection<BsonDocument>("Player");
-        
+
         //MQTT Globale Settings mit Brocker und Topics
-        //public static MqttClient mqtt = new MqttClient(IPAddress.Parse("141.56.180.120"));
-        public static MqttClient mqtt = new MqttClient("broker.hivemq.com");
-        public static String[] topics = {"GetPlayer","GetScoreboard","RequestQuestions","GetWinner"};
+        public static MqttClient mqtt = new MqttClient(IPAddress.Parse("34.230.40.176"));
+        public static String[] topics = { "GetPlayer", "GetScoreboard", "RequestQuestions", "GetWinner" };
 
         public static Program p = new Program();
-        
+
         static void Main(string[] args)
         {
             p.SetMQTT(); //MQTT Connection aufbauen
             p.MongoInit(); //MongoDB mit Fragen initialisieren
-            
+
         }
 
         //MQTT Client verbinden und Topics subscriben
-        public bool SetMQTT(){
-            mqtt.MqttMsgPublishReceived += MQTTHandler;        
-            mqtt.Connect("Spielmanager","","",false,ushort.MaxValue);
+        public bool SetMQTT()
+        {
+            mqtt.MqttMsgPublishReceived += MQTTHandler;
+            mqtt.Connect("Spielmanager", "", "", false, ushort.MaxValue);
 
-            if(mqtt.IsConnected)
+            if (mqtt.IsConnected)
             {
                 Console.WriteLine("MQTT connected.");
                 byte[] qos = new byte[topics.Length];
-                for(int i=0; i < topics.Length;i++)
+                for (int i = 0; i < topics.Length; i++)
                 {
                     qos[i] = MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE;
                 }
 
                 mqtt.Subscribe(topics, qos);
                 return true;
-            } else 
+            }
+            else
             {
                 Console.WriteLine("MQTT NOT connected.");
                 return false;
@@ -75,46 +76,46 @@ namespace BPA_Version1
                 case "Lennert":
                     if (msg == "Fragen")
                     {
-                        Qcollection.Find(new BsonDocument()).ForEachAsync(X => Console.WriteLine(X));                    
-                        
+                        Qcollection.Find(new BsonDocument()).ForEachAsync(X => Console.WriteLine(X));
+
                         var filter = Builders<BsonDocument>.Filter.Empty;//Gt( .Eq("Fragen", "Was ist 1+1");
                         var result = Qcollection.Find(filter).ToList();
                         foreach (var doc in result)
                         {
                             var j = doc.ToJson();
                             Console.WriteLine(j);
-                            p.MQTTPublish("Lennert",j);
+                            p.MQTTPublish("Lennert", j);
                         }
                     }
                     break;
-                    case "RequestQuestions":
+                case "RequestQuestions":
                     {
-                        Console.WriteLine("Florian möchte {0} Fragen haben.",msg);
+                        Console.WriteLine("Florian möchte {0} Fragen haben.", msg);
                         string result = p.SelectNRandomQuestions(Convert.ToInt32(msg));
                         Console.WriteLine(result);
-                        p.MQTTPublish("ResponseQuestions",result);
+                        p.MQTTPublish("ResponseQuestions", result);
                         break;
                     }
                     break;
-                    case "GetPlayer":
+                case "GetPlayer":
                     {
                         p.SaveDocument(Pcollection, msg);
                         break;
                     }
                     break;
-                    case "GetScoreboard":
+                case "GetScoreboard":
                     {
                         p.SendScoreboard();
                         break;
                     }
                     break;
-                    case "GetWinner":
+                case "GetWinner":
                     {
                         p.AddPoints(msg);
                         break;
                     }
                 default:
-                    Console.WriteLine("Topic {0} is not defined. \tMessage = {1}",e.Topic, msg);
+                    Console.WriteLine("Topic {0} is not defined. \tMessage = {1}", e.Topic, msg);
                     break;
             }
         }
@@ -128,65 +129,68 @@ namespace BPA_Version1
                 System.IO.DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(@"C:\json");
                 foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
                 {
-                    p.SaveDocumentFromFile(Qcollection,f.FullName.ToString());
+                    p.SaveDocumentFromFile(Qcollection, f.FullName.ToString());
                 }
-                
+
                 long count = Qcollection.Count(new BsonDocument());
-                
-                if(count>0)
+
+                if (count > 0)
                 {
-                    Console.WriteLine("Added {0} questions to the database.",count);
-                } else
+                    Console.WriteLine("Added {0} questions to the database.", count);
+                }
+                else
                 {
-                    Console.WriteLine("No questions added to the database.",count); 
+                    Console.WriteLine("No questions added to the database.", count);
                 }
 
                 p.DeleteCollection("Player");
                 ParentDirectory = new System.IO.DirectoryInfo(@"C:\player");
                 foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
                 {
-                    p.SaveDocumentFromFile(Pcollection,f.FullName.ToString());
+                    p.SaveDocumentFromFile(Pcollection, f.FullName.ToString());
                 }
-                
+
                 count = Pcollection.Count(new BsonDocument());
-                
-                if(count>0)
+
+                if (count > 0)
                 {
-                    Console.WriteLine("Added {0} player to the database.",count);
-                } else
+                    Console.WriteLine("Added {0} player to the database.", count);
+                }
+                else
                 {
-                    Console.WriteLine("No player added to the database.",count);
+                    Console.WriteLine("No player added to the database.", count);
                 }
                 return true;
 
             }
             catch (Exception e)
             {
-                Console.WriteLine("MongoDB initialization failed. \nException: {0}",e.Message);
+                Console.WriteLine("MongoDB initialization failed. \nException: {0}", e.Message);
                 return false;
             }
         }
- 
+
         //MongoDB Löschen einer Frage
-        public void DeleteOneQuestion( string attribute, int value)
+        public void DeleteOneQuestion(string attribute, int value)
         {
-            Qcollection.DeleteOne(new BsonDocument(attribute, value)); 
+            Qcollection.DeleteOne(new BsonDocument(attribute, value));
         }
 
         //MongoDB Löschen einer Collection
         public void DeleteCollection(string name)
         {
-            database.DropCollection(name); 
+            database.DropCollection(name);
         }
 
         //MongoDB Löschen einer Datenbank
         static void DeleteDB(string name)
         {
-            client.DropDatabase(name); 
+            client.DropDatabase(name);
         }
 
         //MongoDB Ausgabe aller Datenbanken auf der MongoDB
-        public void ShowDB() {
+        public void ShowDB()
+        {
             var dbList = client.ListDatabases().ToList();
             Console.WriteLine("The list of databases are :");
             foreach (var item in dbList)
@@ -197,7 +201,7 @@ namespace BPA_Version1
         }
 
         //MongoDB Speichern eines Dokuments von einer Datei
-        public void SaveDocumentFromFile (IMongoCollection<BsonDocument> col, string file)
+        public void SaveDocumentFromFile(IMongoCollection<BsonDocument> col, string file)
         {
             string text = System.IO.File.ReadAllText(@file);
             var document = BsonSerializer.Deserialize<BsonDocument>(text);
@@ -205,7 +209,7 @@ namespace BPA_Version1
         }
 
         //MongoDB Speichern eines Dokuments per MQTT
-        public void SaveDocument (IMongoCollection<BsonDocument> col, string msg)
+        public void SaveDocument(IMongoCollection<BsonDocument> col, string msg)
         {
             var document = BsonSerializer.Deserialize<BsonDocument>(msg);
             col.InsertOne(document);
@@ -222,7 +226,7 @@ namespace BPA_Version1
         }
 
         //MongoDB Select einer Frage
-        public string SelectQuestion (string att, string numb)
+        public string SelectQuestion(string att, string numb)
         {
             var filter = Builders<BsonDocument>.Filter.Eq(att, numb);
             var result = Qcollection.Find(filter).ToList();
@@ -232,26 +236,26 @@ namespace BPA_Version1
                 Console.WriteLine(doc.ToJson());
                 x = doc.ToJson();
             }
-            return x; 
-        }      
+            return x;
+        }
 
-        
-        public string SelectNRandomQuestions (int n)
+
+        public string SelectNRandomQuestions(int n)
         {
             //Hole alle Fragen aus der Datenbank
             var filter = Builders<BsonDocument>.Filter.Empty;
             var result = Qcollection.Find(filter).ToList();
-                        
+
             //Wie viele Fragen gibt es in der Datenbank
             int count = Convert.ToInt32(Qcollection.Count(new BsonDocument()));
-            
+
             //Erzeugung von n Zufallszahlen, die sich nicht doppeln
             Random rnd = new Random();
-            int[] randomQuestions = new int[n];     
+            int[] randomQuestions = new int[n];
             int dummy;
 
             randomQuestions[0] = rnd.Next(count);
-            for(int x = 1; x < n;)
+            for (int x = 1; x < n;)
             {
                 dummy = rnd.Next(count);
                 if (!randomQuestions.Contains(dummy))
@@ -259,10 +263,10 @@ namespace BPA_Version1
                     randomQuestions[x] = dummy;
                     x++;
                 }
-            }   
+            }
             //Zufallszahlen sortieren
             Array.Sort(randomQuestions);
-            
+
             //String zusammenbauen
             string resultString = "[";
             int counter = 0;
@@ -273,17 +277,17 @@ namespace BPA_Version1
                 if (randomQuestions.Contains(counter))
                 {
                     resultString += doc.ToJson() + ",";
-                    Console.WriteLine(doc.ToJson());    
+                    Console.WriteLine(doc.ToJson());
                 }
                 counter++;
             }
             //Löschen des letztens Kommas aus der foreach-Schleife
-            resultString = resultString.Substring(0,resultString.Length-1);
+            resultString = resultString.Substring(0, resultString.Length - 1);
             resultString += "]";
 
-            return resultString; 
+            return resultString;
         }
-        
+
         public void SendScoreboard()
         {
             //Hole alle Spieler sortiert nach Punktzahl aus der Datenbank
@@ -294,7 +298,7 @@ namespace BPA_Version1
             foreach (var doc in list)
             {
                 //Doc 0 = mongoID 1 = batchId 2=name 3=age 4=score
-                                
+
                 resultString += "{";
                 resultString += "\"batchId\":\"" + doc[1] + "\",";
                 resultString += "\"name\":\"" + doc[2] + "\",";
@@ -303,22 +307,47 @@ namespace BPA_Version1
             }
 
             //Löschen des letztens Kommas aus der foreach-Schleife
-            resultString = resultString.Substring(0,resultString.Length-1);
+            resultString = resultString.Substring(0, resultString.Length - 1);
             resultString += "]";
-            p.MQTTPublish("htw/bpa/123",resultString);
+
+            //für die Übergabe der Rangliste 
+            p.MQTTPublish("SetScoreboard", resultString);
         }
 
         public void AddPoints(string msg)
         {
+            string id;
+            int score;
             var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
-            foreach(var doc in list){
-                if(msg.Contains(doc[1].AsString))
+            foreach (var doc in list)
+            {
+                if (msg.Contains(doc[1].AsString))
                 {
+                    //Console.WriteLine(doc);
                     doc[4] = doc[4].AsInt32 + 1;
+                    id = doc[2].AsString;
+                    score = doc[4].AsInt32 + 1;
+
+                    var filter = Builders<BsonDocument>.Filter.Eq("name", id);
+                    //var update = Builders<BsonDocument>.Update.Set("score", score);
+                    //var result = Pcollection.UpdateOne(filter, update);
+                    var result = Qcollection.Find(filter).ToList();
+                    Console.WriteLine("bala");
                 }
             }
 
+
+            var list1 = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
+            foreach (var doc2 in list1)
+            {
+                Console.WriteLine(doc2);
+            }
+
+
+
+
         }
-        
-    }    
+    }
+
 }
+

@@ -90,7 +90,6 @@ namespace BPA_Version1
                     break;
                 case "RequestQuestions":
                     {
-                        Console.WriteLine("Florian möchte {0} Fragen haben.", msg);
                         string result = p.SelectNRandomQuestions(Convert.ToInt32(msg));
                         Console.WriteLine(result);
                         p.MQTTPublish("ResponseQuestions", result);
@@ -99,7 +98,14 @@ namespace BPA_Version1
                     break;
                 case "GetPlayer":
                     {
-                        p.SaveDocument(Pcollection, msg);
+                        try 
+                        {
+                            p.SaveDocument(Pcollection, msg);
+                        }
+                        catch (Exception ex)
+                        {
+                            p.MQTTPublish("Info","Spieler konnte nicht hinzugefügt werden.");
+                        }
                         break;
                     }
                     break;
@@ -269,6 +275,7 @@ namespace BPA_Version1
 
             //String zusammenbauen
             string resultString = "[";
+            //string resultString1 = "[";
             int counter = 0;
 
             //Alle Dokumente durchlaufen und wenn das x-te Dokument in den Zufallszahlen enthalten ist wird es zum String hinzugefügt
@@ -276,8 +283,9 @@ namespace BPA_Version1
             {
                 if (randomQuestions.Contains(counter))
                 {
-                    resultString += doc.ToJson() + ",";
-                    Console.WriteLine(doc.ToJson());
+                    //Aufbau ohne ObjectID von der MongoDB
+                    resultString += "{ \"Question\" : " + doc[1].ToJson() + ", \"Answer\" : ";
+                    resultString += doc[2].ToJson() + "},";
                 }
                 counter++;
             }
@@ -323,20 +331,14 @@ namespace BPA_Version1
             {
                 if (msg.Contains(doc[1].AsString))
                 {
-                    
                      id = doc[1].AsString;
                     score = doc[4].AsInt32 + 1;
 
                     var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);
                     var update = Builders<BsonDocument>.Update.Set("score", score);
                     var result = Pcollection.UpdateOne(filter, update);
-                    
-                    
-             
                 }
             }
-
-
             p.SendScoreboard(); 
 
         }

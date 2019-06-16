@@ -25,14 +25,17 @@ namespace BPA_Version1
 
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("34.230.40.176"));
-        public static String[] topics = { "GetPlayer", "GetScoreboard", "RequestQuestions", "GetWinner" };
+        public static String[] topics = { "GetPlayer", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession"};
+
+        public string usedQuestions = "";
 
         public static Program p = new Program();
 
         static void Main(string[] args)
         {
             p.SetMQTT(); //MQTT Connection aufbauen
-            p.MongoInit(); //MongoDB mit Fragen initialisieren
+            p.LoadQuestionsToMongo();
+            p.LoadPlayerToMongo();
 
         }
 
@@ -40,7 +43,7 @@ namespace BPA_Version1
         public bool SetMQTT()
         {
             mqtt.MqttMsgPublishReceived += MQTTHandler;
-            mqtt.Connect("Spielmanager", "", "", false, ushort.MaxValue);
+            mqtt.Connect("Spielmanager_Lennert", "", "", false, ushort.MaxValue);
 
             if (mqtt.IsConnected)
             {
@@ -120,14 +123,21 @@ namespace BPA_Version1
                         p.AddPoints(msg);
                         break;
                     }
+                case "ClearSession":
+                    {
+                        p.LoadQuestionsToMongo();
+                        p.DeleteCollection("Player");
+                        Console.WriteLine("Session cleaned");
+                        break;
+                    }
                 default:
                     Console.WriteLine("Topic {0} is not defined. \tMessage = {1}", e.Topic, msg);
                     break;
             }
         }
 
-        //MongoDB Initiales laden der Fragen in die MongoDB
-        public bool MongoInit()
+        //MongoDB Lade alle Fragen
+        public bool LoadQuestionsToMongo()
         {
             try
             {
@@ -148,15 +158,28 @@ namespace BPA_Version1
                 {
                     Console.WriteLine("No questions added to the database.", count);
                 }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("MongoDB questions initialization failed. \nException: {0}", e.Message);
+                return false;
+            }
+        }
 
+        //MongoDB Lade alle Spieler
+        public bool LoadPlayerToMongo()
+        {
+            try
+            {
                 p.DeleteCollection("Player");
-                ParentDirectory = new System.IO.DirectoryInfo(@"C:\player");
+                System.IO.DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(@"C:\player");
                 foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
                 {
                     p.SaveDocumentFromFile(Pcollection, f.FullName.ToString());
                 }
 
-                count = Pcollection.Count(new BsonDocument());
+                long count = Pcollection.Count(new BsonDocument());
 
                 if (count > 0)
                 {
@@ -171,15 +194,16 @@ namespace BPA_Version1
             }
             catch (Exception e)
             {
-                Console.WriteLine("MongoDB initialization failed. \nException: {0}", e.Message);
+                Console.WriteLine("MongoDB player initialization failed. \nException: {0}", e.Message);
                 return false;
             }
         }
 
         //MongoDB Löschen einer Frage
-        public void DeleteOneQuestion(string attribute, int value)
+        public void DeleteOneQuestion(string attribute, string value)
         {
             Qcollection.DeleteOne(new BsonDocument(attribute, value));
+            
         }
 
         //MongoDB Löschen einer Collection
@@ -254,46 +278,56 @@ namespace BPA_Version1
 
             //Wie viele Fragen gibt es in der Datenbank
             int count = Convert.ToInt32(Qcollection.Count(new BsonDocument()));
-
-            //Erzeugung von n Zufallszahlen, die sich nicht doppeln
-            Random rnd = new Random();
-            int[] randomQuestions = new int[n];
-            int dummy;
-
-            randomQuestions[0] = rnd.Next(count);
-            for (int x = 1; x < n;)
+            if (count >= 1)
             {
-                dummy = rnd.Next(count);
-                if (!randomQuestions.Contains(dummy))
+                //Erzeugung von n Zufallszahlen, die sich nicht doppeln
+                Random rnd = new Random();
+                int[] randomQuestions = new int[n];
+                int dummy;
+
+                randomQuestions[0] = rnd.Next(count);
+                for (int x = 1; x < n;)
                 {
-                    randomQuestions[x] = dummy;
-                    x++;
+                    dummy = rnd.Next(count);
+                    if (!randomQuestions.Contains(dummy))
+                    {
+                        randomQuestions[x] = dummy;
+                        x++;
+                    }
                 }
+                //Zufallszahlen sortieren
+                Array.Sort(randomQuestions);
+
+                //String zusammenbauen
+                string resultString = "[";
+                //string resultString1 = "[";
+                int counter = 0;
+
+                //Alle Dokumente durchlaufen und wenn das x-te Dokument in den Zufallszahlen enthalten ist wird es zum String hinzugefügt
+                foreach (var doc in result)
+                {
+                    if (randomQuestions.Contains(counter))
+                    {
+                        //Aufbau ohne ObjectID von der MongoDB
+                        resultString += "{ \"Question\" : " + doc[1].ToJson() + ", \"Answer\" : ";
+                        resultString += doc[2].ToJson() + "},";                 
+
+                        var f = Builders<BsonDocument>.Filter.Eq("_id", doc[0]);
+                        var r = Qcollection.DeleteOne(f);
+                    }
+                    counter++;
+                }
+                //Löschen des letztens Kommas aus der foreach-Schleife
+                resultString = resultString.Substring(0, resultString.Length - 1);
+                resultString += "]";
+
+                return resultString;
             }
-            //Zufallszahlen sortieren
-            Array.Sort(randomQuestions);
-
-            //String zusammenbauen
-            string resultString = "[";
-            //string resultString1 = "[";
-            int counter = 0;
-
-            //Alle Dokumente durchlaufen und wenn das x-te Dokument in den Zufallszahlen enthalten ist wird es zum String hinzugefügt
-            foreach (var doc in result)
+            else
             {
-                if (randomQuestions.Contains(counter))
-                {
-                    //Aufbau ohne ObjectID von der MongoDB
-                    resultString += "{ \"Question\" : " + doc[1].ToJson() + ", \"Answer\" : ";
-                    resultString += doc[2].ToJson() + "},";
-                }
-                counter++;
+                Console.WriteLine("No more questions at database. Clean session via message at topic 'ClearSession'");
+                return "[]";
             }
-            //Löschen des letztens Kommas aus der foreach-Schleife
-            resultString = resultString.Substring(0, resultString.Length - 1);
-            resultString += "]";
-
-            return resultString;
         }
 
         public void SendScoreboard()

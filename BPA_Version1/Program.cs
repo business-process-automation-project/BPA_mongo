@@ -27,7 +27,8 @@ namespace BPA_Version1
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("34.230.40.176"));
         public static String[] topics = { "GetPlayer", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession"};
 
-        public string usedQuestions = "";
+        public int[] usedAvatar = new int[43];
+        public int x = 0;
 
         public static Program p = new Program();
 
@@ -127,6 +128,8 @@ namespace BPA_Version1
                     {
                         p.LoadQuestionsToMongo();
                         p.DeleteCollection("Player");
+                        p.x = 0;
+                        Array.Clear(p.usedAvatar,0,40);
                         Console.WriteLine("Session cleaned");
                         break;
                     }
@@ -376,7 +379,7 @@ namespace BPA_Version1
         public void AddPoints(string msg)
         {
             string id;
-            int score, avatar ;
+            int score, avatar, nummer ;
             Random rnd = new Random();
 
             var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
@@ -401,7 +404,18 @@ namespace BPA_Version1
                 try { avatar = doc[5].AsInt32;}
                 catch (Exception e ) 
                 {
-                    avatar = rnd.Next(44);
+                    avatar = 99;
+                    while(avatar == 99)
+                    {
+                        nummer = rnd.Next(44);
+                        if(!p.usedAvatar.Contains(nummer))
+                        {
+                            p.usedAvatar[p.x] = nummer;
+                            avatar = nummer;
+                            p.x++;
+                        }
+                    }
+                    
                 }; 
 
                 var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);

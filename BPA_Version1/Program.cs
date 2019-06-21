@@ -25,7 +25,7 @@ namespace BPA_Version1
 
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("34.230.40.176"));
-        public static String[] topics = { "GetPlayer", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession"};
+        public static String[] topics = { "SetUser", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession"};
 
         public int[] usedAvatar = new int[43];
         public int x = 0;
@@ -44,7 +44,7 @@ namespace BPA_Version1
         public bool SetMQTT()
         {
             mqtt.MqttMsgPublishReceived += MQTTHandler;
-            mqtt.Connect("Spielmanager_Lennert", "", "", false, ushort.MaxValue);
+            mqtt.Connect("Spielmanager", "", "", false, ushort.MaxValue);
 
             if (mqtt.IsConnected)
             {
@@ -77,21 +77,6 @@ namespace BPA_Version1
             string msg = Encoding.UTF8.GetString(e.Message, 0, e.Message.Length);
             switch (e.Topic)
             {
-                case "Lennert":
-                    if (msg == "Fragen")
-                    {
-                        Qcollection.Find(new BsonDocument()).ForEachAsync(X => Console.WriteLine(X));
-
-                        var filter = Builders<BsonDocument>.Filter.Empty;//Gt( .Eq("Fragen", "Was ist 1+1");
-                        var result = Qcollection.Find(filter).ToList();
-                        foreach (var doc in result)
-                        {
-                            var j = doc.ToJson();
-                            Console.WriteLine(j);
-                            p.MQTTPublish("Lennert", j);
-                        }
-                    }
-                    break;
                 case "RequestQuestions":
                     {
                         string result = p.SelectNRandomQuestions(Convert.ToInt32(msg));
@@ -100,7 +85,7 @@ namespace BPA_Version1
                         break;
                     }
                     break;
-                case "GetPlayer":
+                case "SetUser":
                     {
                         try 
                         {
@@ -391,14 +376,8 @@ namespace BPA_Version1
                 //Punkte
                 if (msg.Contains(doc[1].AsString))
                 {
-                    
-                    
-                     
                     try { score = doc[4].AsInt32 + 1; }
                     catch (Exception e ) { score = 1; }; 
-                                   
-
-
                 }
 
                 //Avatar setzen

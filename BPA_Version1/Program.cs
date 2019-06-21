@@ -297,6 +297,7 @@ namespace BPA_Version1
             int count = Convert.ToInt32(Qcollection.Count(new BsonDocument()));
             if (count >= 1)
             {
+                
                 //Erzeugung von n Zufallszahlen, die sich nicht doppeln
                 Random rnd = new Random();
                 int[] randomQuestions = new int[n];

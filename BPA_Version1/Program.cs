@@ -130,6 +130,19 @@ namespace BPA_Version1
                         Console.WriteLine("Session cleaned");
                         break;
                     }
+                case "AddQuestion":
+                    { 
+                        try 
+                        {
+                            p.SaveDocument(Qcollection, msg);
+                            Console.WriteLine("Question added");
+                        }
+                        catch (Exception ex)
+                        {
+                            p.MQTTPublish("Info","Frage konnte nicht hinzugefügt werden.");
+                        }
+                        break;
+                    }
                 default:
                     Console.WriteLine("Topic {0} is not defined. \tMessage = {1}", e.Topic, msg);
                     break;
@@ -176,6 +189,7 @@ namespace BPA_Version1
                 System.IO.DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(@"C:\player");
                 foreach (System.IO.FileInfo f in ParentDirectory.GetFiles())
                 {
+
                     p.SaveDocumentFromFile(Pcollection, f.FullName.ToString());
                 }
 
@@ -345,7 +359,8 @@ namespace BPA_Version1
                 resultString += "\"badgeId\":\"" + doc[1] + "\",";
                 resultString += "\"name\":\"" + doc[2] + "\",";
                 resultString += "\"age\":" + doc[3] + ",";
-                resultString += "\"score\":" + doc[4] + "},";
+                resultString += "\"score\":" + doc[4] + ",";
+                resultString += "\"avatar\":" + doc[5] + "},";
             }
 
             //Löschen des letztens Kommas aus der foreach-Schleife
@@ -361,29 +376,42 @@ namespace BPA_Version1
         public void AddPoints(string msg)
         {
             string id;
-            int score ;
+            int score, avatar ;
+            Random rnd = new Random();
 
             var list = Pcollection.Find(new BsonDocument()).Sort(Builders<BsonDocument>.Sort.Descending("score")).ToList();
             foreach (var doc in list)
             {
+                score = 0;
+                id = doc[1].AsString;
+                //Punkte
                 if (msg.Contains(doc[1].AsString))
                 {
                     
-                    id = doc[1].AsString;
+                    
                      
                     try { score = doc[4].AsInt32 + 1; }
                     catch (Exception e ) { score = 1; }; 
                                    
 
-                    var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);
-                    var update = Builders<BsonDocument>.Update.Set("score", score);
-                    var result = Pcollection.UpdateOne(filter, update);
+
                 }
+
+                //Avatar setzen
+                try { avatar = doc[5].AsInt32;}
+                catch (Exception e ) 
+                {
+                    avatar = rnd.Next(44);
+                }; 
+
+                var filter = Builders<BsonDocument>.Filter.Eq("badgeId", id);
+                var updateScore = Builders<BsonDocument>.Update.Set("score", score);
+                var updateAvatar = Builders<BsonDocument>.Update.Set("avatar", avatar);
+                Pcollection.UpdateOne(filter, updateScore);
+                Pcollection.UpdateOne(filter, updateAvatar);
             }
             p.SendScoreboard(); 
-
         }
     }
-
 }
 

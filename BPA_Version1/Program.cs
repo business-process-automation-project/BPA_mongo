@@ -25,7 +25,7 @@ namespace BPA_Version1
 
         //MQTT Globale Settings mit Brocker und Topics
         public static MqttClient mqtt = new MqttClient(IPAddress.Parse("34.230.40.176"));
-        public static String[] topics = { "SetUser", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession"};
+        public static String[] topics = { "SetUser", "GetScoreboard", "RequestQuestions", "GetWinner" , "ClearSession", "DeletePlayer"};
 
         public int[] usedAvatar = new int[43];
         public int x = 0;
@@ -109,12 +109,18 @@ namespace BPA_Version1
                         p.AddPoints(msg);
                         break;
                     }
-                case "ClearSession":
+                case "DeletePlayer":
                     {
-                        p.LoadQuestionsToMongo();
                         p.DeleteCollection("Player");
                         p.x = 0;
                         Array.Clear(p.usedAvatar,0,40);
+                        break;
+                    }
+
+                case "ClearSession":
+                    {
+                        p.LoadQuestionsToMongo();
+
                         Console.WriteLine("Session cleaned");
                         break;
                     }
@@ -154,10 +160,12 @@ namespace BPA_Version1
                 if (count > 0)
                 {
                     Console.WriteLine("Added {0} questions to the database.", count);
+                    p.MQTTPublish("Info", "Added " + count + " questions to the database.");
                 }
                 else
                 {
                     Console.WriteLine("No questions added to the database.", count);
+                    p.MQTTPublish("Info", "No questions added to the database.");
                 }
                 return true;
             }
@@ -186,10 +194,12 @@ namespace BPA_Version1
                 if (count > 0)
                 {
                     Console.WriteLine("Added {0} player to the database.", count);
+                    p.MQTTPublish("Info", "Added " + count + " player to the database.");
                 }
                 else
                 {
                     Console.WriteLine("No player added to the database.", count);
+                    p.MQTTPublish("Info", "No player added to the database.");
                 }
                 return true;
 
@@ -212,6 +222,7 @@ namespace BPA_Version1
         public void DeleteCollection(string name)
         {
             database.DropCollection(name);
+            p.MQTTPublish("Info", "Collection " + name + " deleted.");
         }
 
         //MongoDB Löschen einer Datenbank
@@ -342,7 +353,7 @@ namespace BPA_Version1
             try { 
             foreach (var doc in list)
             {
-                //Doc 0 = mongoID 1 = badgeId 2=name 3=age 4=score
+                 //Doc 0 = mongoID 1 = badgeId 2=name 3=age 4=score
 
                 resultString += "{";
                 resultString += "\"badgeId\":\"" + doc[1] + "\",";
@@ -404,6 +415,7 @@ namespace BPA_Version1
                 Pcollection.UpdateOne(filter, updateScore);
                 Pcollection.UpdateOne(filter, updateAvatar);
             }
+            p.MQTTPublish("Info","Points added.");
             p.SendScoreboard(); 
         }
     }

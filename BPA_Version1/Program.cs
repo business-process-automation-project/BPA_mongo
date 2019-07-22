@@ -36,8 +36,7 @@ namespace BPA_Version1
         {
             p.SetMQTT(); //MQTT Connection aufbauen
             p.LoadQuestionsToMongo();
-            p.LoadPlayerToMongo();
-
+            p.LoadPlayerToMongo();  
         }
 
         //MQTT Client verbinden und Topics subscriben
@@ -389,6 +388,10 @@ namespace BPA_Version1
                 {
                     try { score = doc[4].AsInt32 + 1; }
                     catch (Exception e ) { score = 1; }; 
+                }
+                else 
+                {
+                    continue;
                 }
 
                 //Avatar setzen
